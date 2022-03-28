@@ -1,34 +1,16 @@
-function reducer(state = 0, action) {
-	if (action.type === 'increase') {
-		return state + 1;
-	}
+import store from './redux.js';
 
-	return state;
-}
+const counter = document.querySelector('.count');
+const paragraph = document.querySelector('.paragraph');
 
-function createStore(reducer) {
-	let state;
+const handleIncrease = () => {
+	store.dispatch({type: 'increase'});
+};
 
-	const getState = () => state;
+const listener = state => {
+	counter.innerHTML = state;
+};
 
-	const dispatch = action => {
-		state = reducer(state, action);
-	};
+store.subscribe(listener);
 
-	dispatch({});
-
-	return {
-		getState,
-		dispatch
-	};
-}
-
-const store = createStore(reducer);
-
-console.log(store.getState());
-
-store.dispatch({type: 'increase'});
-store.dispatch({type: 'increase'});
-store.dispatch({type: 'increase'});
-
-console.log(store.getState());
+paragraph.addEventListener('click', handleIncrease);
