@@ -86,3 +86,45 @@ return {
 Если с getState все ясно, то c dispatch могут возникнуть вопросы.
 
 Dispatch - функция, которая вызывает reducer и сохраняет возвращаемое значение в нашем state. Но также есть и другая задача dispatch, о которой мы поговорим потом, а сейчас пока что этого достаточно.
+
+А теперь все вместе:
+
+```js
+function reducer(state = 0, action) {
+	if (action.type === 'increase') {
+		return state + 1;
+	}
+
+	return state;
+}
+
+function createStore(reducer) {
+	let state;
+
+	const getState = () => state;
+
+	const dispatch = action => {
+		state = reducer(state, action);
+	};
+
+	dispatch({});
+
+	return {
+		getState,
+		dispatch
+	};
+}
+
+const store = createStore(reducer);
+
+// Вызов функции getState возвращает нам текущее состояние нашего хранилища,
+// а это та самая переменная state внутри createStore
+console.log(store.getState());
+
+// Отправляем действие. Под капотом будет вызываться наш reducer, куда мы будем передавать текущий state и action
+store.dispatch({type: 'increase'});
+store.dispatch({type: 'increase'});
+store.dispatch({type: 'increase'});
+
+console.log(store.getState());
+```
