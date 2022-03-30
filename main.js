@@ -1,7 +1,6 @@
 import store from './redux.js';
 
 const counter = document.querySelector('.count');
-const age = document.querySelector('.age');
 const paragraph = document.querySelector('.paragraph');
 const subscribeButton = document.querySelector('.subscribeButton');
 const unsubscribeButton = document.querySelector('.unsubscribeButton');
@@ -12,7 +11,6 @@ const handleIncrease = () => {
 
 const listener = state => {
 	counter.innerHTML = state.count;
-	age.innerHTML = state.age;
 };
 
 const handleSubscribe = () => {
