@@ -1,6 +1,9 @@
-import createStore from './redux/createStore.js';
-import combineReducers from './redux/combineReducers.js';
-import applyMiddleware from './redux/applyMiddleware.js';
+import {createStore, combineReducers, applyMiddleware} from './redux/index.js';
+import thunk from './redux-thunk/index.js';
+
+const initialState = {
+	count: 10
+};
 
 function countReducer(state = 0, action) {
 	if (action.type === 'increase') {
@@ -15,7 +18,7 @@ const rootReducer = combineReducers({count: countReducer});
 const loggerOne = store => next => action => {
 	console.log('I AM FIRST');
 
-	next(action);
+	return next(action);
 };
 
 const loggerTwo = store => next => action => {
@@ -24,6 +27,6 @@ const loggerTwo = store => next => action => {
 	next(action);
 };
 
-const store = applyMiddleware(loggerOne, loggerTwo)(createStore)(rootReducer);
+const store = createStore(rootReducer, initialState, applyMiddleware(loggerOne, loggerTwo, thunk));
 
 export default store;
