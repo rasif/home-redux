@@ -72,22 +72,20 @@ function createStore(reducer, preloadedState, enhancer) {
 
 		listener(currentState);
 
-		return {
-			unsubscribe() {
-				if (!isSubscribed) {
-					return;
-				}
-
-				if (isDispatching) {
-					throw new Error('You may not unsubscribe while the reducer is executing');
-				}
-
-				isSubscribed = false;
-
-				const index = currentListeners.indexOf(listener);
-
-				currentListeners.splice(index, 1);
+		return function unsubscribe() {
+			if (!isSubscribed) {
+				return;
 			}
+
+			if (isDispatching) {
+				throw new Error('You may not unsubscribe while the reducer is executing');
+			}
+
+			isSubscribed = false;
+
+			const index = currentListeners.indexOf(listener);
+
+			currentListeners.splice(index, 1);
 		};
 	};
 

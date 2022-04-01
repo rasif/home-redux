@@ -1,4 +1,4 @@
-# home-redux
+# Redux, react-redux, redux-thunk своими руками
 
 Пишем redux с нуля
 
@@ -667,3 +667,118 @@ export default thunk;
 Что делает thunk? Смотрит на action, если это функция, то вызывает эту функцию с параметром store, а если нет, то вызывает следующий мидлвар.
 
 Если мы диспатчим функцию, а не объект с типом type, то будет вызвана эта функция, но не реальный диспатч в редьюсер.
+
+## Переходим в ветку react-redux
+
+Мы знаем, что из себя представляет redux, какое api есть, как работают функции createStore, applyMiddleware, что есть на самом деле reducer, научились создавать свои мидлвары, знаем, как привязать наш store к нативному js, но как же сделать связку с React?
+
+В этой ветке рассмотрим основные возможности react-redux, что такое Provider, как работает изнутри connect и многое другое.
+
+Начнем, пожалуй, с самого основного, что есть в этой библиотеке. Мы создали наш store с помощью createStore, но что дальше? Как начать использовать наше хранилище? Здесь к нам приходит компонент Provider.
+
+Он должен будет обернуть всех детей в ContextProvider и дать доступ к store всем children.
+
+```js
+import {createContext} from 'react';
+
+const Context = createContext();
+
+function Provider({children, store}) {
+	if (!store) {
+		throw new Error('Expected store');
+	}
+
+	return <Context.Provider value={{store}}>{children}</Context.Provider>;
+}
+```
+
+Создаем контекст. Создаем компонент Provider, который делает проверку на наличие пропса store. Если все окей, то возвращаем Provider нашего контекста, а внутри children, то есть то, что обернуто в наш компонент. Теперь все, что внутри этого провайдера, сможет обратиться к нашему store.
+
+Возьмемся за такие хуки, как useDispatch, useStore, useSelector.
+
+Начнем с useDispatch. Данный хук должен нам возвращать dispatch нашего store.
+
+Вот как выглядит наш хук:
+
+```js
+import {useOurContext} from './context';
+
+function useDispatch() {
+	const {dispatch} = useOurContext();
+
+	return dispatch;
+}
+
+export default useDispatch;
+```
+
+useOurContext в свою очередь просто использует useContext, получает весь стор, но чтобы каждый раз не делать проверок да и не вызывать этот хук - мы создали свой кастомный, который все это сделает.
+
+```js
+export const useOurContext = () => {
+	const value = useContext(Context);
+
+	if (!value) {
+		throw new Error('You can not use store outsider Provider');
+	}
+
+	return value;
+};
+```
+
+Перейдем к хуку useStore. Что он делает? Возвращает нам store. Смотрим:
+
+```js
+import {useOurContext} from './context';
+
+function useStore() {
+	const store = useOurContext();
+
+	return store;
+}
+
+export default useStore;
+```
+
+Вот так вот просто :)
+
+Осталось реализовать последний хук в этой ветке: useSelector.
+
+Основную работу выполняет именно данный хук. Он должен будет подписаться к стору и обновлять компонент при случае изменений в store. Принимает же в качестве параметра функцию селектор, возвращающая значение из store.
+
+```js
+import {useOurContext} from './context';
+import {useEffect, useState} from 'react';
+
+function useSelector(selector) {
+	const [value, setValue] = useState();
+
+	const store = useOurContext();
+
+	useEffect(() => {
+		const unsubscribe = store.subscribe(newValue => {
+			setValue(newValue);
+		});
+
+		return () => {
+			unsubscribe();
+		};
+	}, []);
+
+	return selector(store.getState());
+}
+
+export default useSelector;
+```
+
+Что же мы делаем?
+
+Во-первых, берем наш store из контекста. В useEffect (при монтировании компонента) подписываемся на изменения в store. Как образом? Каждый раз, когда обновится состояние нашего хранилища, то бишь, каждый раз, когда будет отправлено действие (dispatch), будут вызваны все подписчики, слушатели.
+
+```js
+const unsubscribe = store.subscribe(newValue => {
+	setValue(newValue);
+});
+```
+
+А возвращать этот хук будет вызов функции (селектора) с одним параметром state (store.getState).
