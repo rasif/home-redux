@@ -2,13 +2,13 @@ import compose from './compose.js';
 
 function applyMiddleware(...middlewares) {
 	return createStore => {
-		return reducer => {
-			const store = createStore(reducer);
+		return (reducer, initialState) => {
+			const store = createStore(reducer, initialState);
 			let dispatch = store.dispatch;
 
 			const middlewareAPI = {
 				getState: store.getState,
-				dispatch: action => store.dispatch(action)
+				dispatch: action => dispatch(action)
 			};
 
 			const chain = middlewares.map(middleware => middleware(middlewareAPI));

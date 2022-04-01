@@ -2,25 +2,23 @@ import store from './redux.js';
 
 const counter = document.querySelector('.count');
 const paragraph = document.querySelector('.paragraph');
-const subscribeButton = document.querySelector('.subscribeButton');
-const unsubscribeButton = document.querySelector('.unsubscribeButton');
+
+const handleIncreaseAsync =
+	() =>
+	({dispatch}) => {
+		setTimeout(() => {
+			dispatch({type: 'increase'});
+		}, 2000);
+	};
 
 const handleIncrease = () => {
-	store.dispatch({type: 'increase'});
+	store.dispatch(handleIncreaseAsync());
 };
 
 const listener = state => {
 	counter.innerHTML = state.count;
 };
 
-const handleSubscribe = () => {
-	store.subscribe(listener);
-};
-
-const handleUnsubscribe = () => {
-	store.unsubscribe(listener);
-};
+store.subscribe(listener);
 
 paragraph.addEventListener('click', handleIncrease);
-subscribeButton.addEventListener('click', handleSubscribe);
-unsubscribeButton.addEventListener('click', handleUnsubscribe);

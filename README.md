@@ -512,3 +512,158 @@ dispatch = compose(firstLogger, secondLogger, thirdLogger)(store.dispatch);
 FirstLogger в качестве next функции secondLogger, secondLogger же thirdLogger, а thirdLogger в самом конце вызовет наш реальный store.dispatch.
 
 Вот и все.
+
+## Переходим в ветку simple-redux-full
+
+Здесь мы добавим некоторые проверки, перенесем вызов функции applyMiddleware внутрь createStore и создадим свой thunk middleware.
+
+Добавили все проверки по аналогии в редаксе и вот так вот выглядит наш createStore:
+
+```js
+function createStore(reducer, preloadedState, enhancer) {
+	if (
+		(typeof preloadedState === 'function' && typeof enhancer === 'function') ||
+		(typeof enhancer === 'function' && typeof arguments[3] === 'function')
+	) {
+		throw new Error('It looks like you are passing several store enhancers');
+	}
+
+	if (typeof preloadedState === 'function' && typeof enhancer === 'undefined') {
+		enhancer = preloadedState;
+		preloadedState = undefined;
+	}
+
+	if (typeof enhancer !== 'undefined') {
+		if (typeof enhancer !== 'function') {
+			throw new Error('Expected enahcer to be a function');
+		}
+
+		return enhancer(createStore)(reducer, preloadedState);
+	}
+
+	if (typeof reducer !== 'function') {
+		throw new Error('Expected the root reducer to be a function');
+	}
+
+	let currentReducer = reducer;
+	let currentState = preloadedState;
+	let currentListeners = [];
+	let isDispatching = false;
+
+	const getState = () => {
+		if (isDispatching) {
+			throw new Error('You may not call store.getState() while the reducer is executing');
+		}
+
+		return currentState;
+	};
+
+	const dispatch = action => {
+		if (typeof action.type === 'undefined') {
+			throw new Error('Actions may not have an undefined "type" property');
+		}
+
+		if (isDispatching) {
+			throw new Error('Reducers may not dispatch actions.');
+		}
+
+		try {
+			isDispatching = true;
+			currentState = currentReducer(currentState, action);
+		} finally {
+			isDispatching = false;
+		}
+
+		currentListeners.forEach(listener => listener(currentState));
+
+		return action;
+	};
+
+	const subscribe = listener => {
+		if (typeof listener !== 'function') {
+			throw new Error('Expected the listener to be a function');
+		}
+
+		if (isDispatching) {
+			throw new Error('You may not call store.subscribe() while the reducer is executing');
+		}
+
+		let isSubscribed = true;
+
+		currentListeners.push(listener);
+
+		listener(currentState);
+
+		return {
+			unsubscribe() {
+				if (!isSubscribed) {
+					return;
+				}
+
+				if (isDispatching) {
+					throw new Error('You may not unsubscribe while the reducer is executing');
+				}
+
+				isSubscribed = false;
+
+				const index = currentListeners.indexOf(listener);
+
+				currentListeners.splice(index, 1);
+			}
+		};
+	};
+
+	dispatch({type: ''});
+
+	return {
+		getState,
+		dispatch,
+		subscribe
+	};
+}
+```
+
+Да, довольно много проверок получилось. А что поделать, если мы хотим, чтобы наша библиотека работала правильно.
+
+Так будет выглядеть наша функция compose:
+
+```js
+function compose(...funcs) {
+	if (funcs.length === 0) {
+		return arg => arg;
+	}
+
+	if (funcs.length === 1) {
+		return funcs[0];
+	}
+
+	const lastFunction = funcs[funcs.length - 1];
+	const restFunctions = funcs.slice(0, funcs.length - 1);
+
+	return (...args) => restFunctions.reduceRight((value, nextFunction) => nextFunction(value), lastFunction(...args));
+}
+```
+
+Если мидлваров нет, то просто вернуть функцию, возвращающая аргумент. Вызов этой функции в нашем случае вернет dispatch.
+
+А если есть только один мидлвар, то вернуть этот мидлвар, который внутрь себя прокинет dispatch, как следующее действие.
+
+Мы уже умеем создавать свои мидлвары. Создадим также свой thunk
+
+```js
+function thunk(store) {
+	return next => action => {
+		if (typeof action === 'function') {
+			return action(store);
+		}
+
+		return next(action);
+	};
+}
+
+export default thunk;
+```
+
+Что делает thunk? Смотрит на action, если это функция, то вызывает эту функцию с параметром store, а если нет, то вызывает следующий мидлвар.
+
+Если мы диспатчим функцию, а не объект с типом type, то будет вызвана эта функция, но не реальный диспатч в редьюсер.
