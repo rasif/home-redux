@@ -1,4 +1,4 @@
-import compose from './compose.js';
+import compose from './compose';
 
 function applyMiddleware(...middlewares) {
 	return createStore => {
