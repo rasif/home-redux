@@ -856,3 +856,106 @@ function mapStateToDispatch(dispatch) {
 
 export default connect(mapStateToProps, mapStateToDispatch)(App);
 ```
+
+## Переходим в ветку react-redux-finish
+
+В этой ветке добавим еще несколько проверок. Так как наш action должен быть чистым объектом (POJO - plain old javascript object), мы напишем функцию isPlainObject, которая будет проверять сие соответствие.
+
+Что же является чистым объектом?
+
+Любой объект, который создан с помощью фигурный скобок или же конструктора Object():
+
+Plain object:
+
+```js
+const object = {};
+
+const object = {
+	name: 'Name'
+};
+
+const object = new Object();
+```
+
+Не plain object:
+
+```js
+function Person() {}
+
+const person = new Person();
+```
+
+```js
+function isPlainObject(object) {
+	if (typeof object !== 'object' && object === null) {
+		return false;
+	}
+
+	let proto = Object.getPrototypeOf(object);
+
+	if (proto === null) {
+		return true;
+	}
+
+	let baseProto = proto;
+
+	while (Object.getPrototypeOf(baseProto) !== null) {
+		baseProto = Object.getPrototypeOf(baseProto);
+	}
+
+	return proto === baseProto;
+}
+```
+
+Если тип нашего объекта не object, он не может быть чистым объектом, и если объект равен нулю, то то же самое (так как тип null в js это object). Дальше берем прототип объекта, если он равен нулю, то это чистый объект. Почему? Потому что мы можем создать объект без прототипа, и тогда он тоже будет чистым. С помощью Object.create, установив прототип в нуль. Вот пример:
+
+```js
+const obj = Object.create(null);
+```
+
+Дальше, пока наш прототип не равен нулю, мы берем прототип. И в самом конце, если наш первый прототип не равен последнему - значит, это нечистый объект.
+
+Функция isObject, проверяющая является ли значение объектом
+
+```js
+function isObject(value) {
+	return typeof value === 'object' && value !== null;
+}
+```
+
+Функция shallowEqual, которая поверхностно сравнивает два значения.
+
+Если это объект, то он проходится по всем ключам и делает строгое сравнение.
+
+```js
+import isObject from './isObject';
+
+function shallowEqual(a, b) {
+	if (a === b) {
+		return true;
+	}
+
+	if ([a, b].some(Number.isNaN)) {
+		return false;
+	}
+
+	if (![a, b].every(isObject)) {
+		return false;
+	}
+
+	const keysA = Object.keys(a);
+	const keysB = Object.keys(b);
+
+	if (keysA.length !== keysB.length) {
+		return false;
+	}
+
+	return !keysA.some(currentKey => a[currentKey] !== b[currentKey]);
+}
+```
+
+-   Если это примитивные значения и они равны - вернет true.
+-   Если одно из значений NaN - вернет false.
+-   Если значения не объекты - вернет false, так как если они примитивные, то проверку такую мы уже сделали.
+-   Затем берем ключи, длины ключей, сравниваем длины. Если длины отличаются, следовательно, они не могут быть равны.
+-   В самом конце делаем проверку на то, что хотя бы одно значение не равно.

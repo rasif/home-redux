@@ -1,3 +1,5 @@
+import isPlainObject from '../utils/isPlainObject';
+
 function createStore(reducer, preloadedState, enhancer) {
 	if (
 		(typeof preloadedState === 'function' && typeof enhancer === 'function') ||
@@ -37,6 +39,10 @@ function createStore(reducer, preloadedState, enhancer) {
 	};
 
 	const dispatch = action => {
+		if (!isPlainObject(action)) {
+			throw new Error('Action has to be a plain object');
+		}
+
 		if (typeof action.type === 'undefined') {
 			throw new Error('Actions may not have an undefined "type" property');
 		}
