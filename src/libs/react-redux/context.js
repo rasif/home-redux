@@ -12,4 +12,6 @@ export const useOurContext = () => {
 	return value;
 };
 
+export const Consumer = Context.Consumer;
+
 export default Context.Provider;

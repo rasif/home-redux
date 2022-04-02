@@ -70,8 +70,6 @@ function createStore(reducer, preloadedState, enhancer) {
 
 		currentListeners.push(listener);
 
-		listener(currentState);
-
 		return function unsubscribe() {
 			if (!isSubscribed) {
 				return;

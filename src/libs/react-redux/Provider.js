@@ -5,7 +5,7 @@ function Provider({children, store}) {
 		throw new Error('Expected store');
 	}
 
-	return <ContextProvider value={{store}}>{children}</ContextProvider>;
+	return <ContextProvider value={store}>{children}</ContextProvider>;
 }
 
 export default Provider;

@@ -688,7 +688,7 @@ function Provider({children, store}) {
 		throw new Error('Expected store');
 	}
 
-	return <Context.Provider value={{store}}>{children}</Context.Provider>;
+	return <Context.Provider value={store}>{children}</Context.Provider>;
 }
 ```
 
@@ -782,3 +782,77 @@ const unsubscribe = store.subscribe(newValue => {
 ```
 
 А возвращать этот хук будет вызов функции (селектора) с одним параметром state (store.getState).
+
+## Переходим в ветку react-redux-connect
+
+Те, кто работал с redux еще до появления хуков в реакте, помнят, что были такие функции, как connect, mapStateToProps, mapDispatchToProps. Рассмотрим их, посмотрим, что же они из себя представляют и как они в действительности работали под капотом.
+
+Функция connect нужна была для того, чтобы дать доступ к хранилищу нашему компоненту. А чтобы дать доступ, мы должны были вызвать функцию с двумя параметрами mapStateToProps и mapDispatchToProps, а затем еще раз вызвать - дабы прокинуть внутрь наш компонент.
+
+```js
+import React from 'react';
+import {Consumer} from './context';
+
+function connect(mapStateToProps, mapDispatchToProps) {
+	return Component => {
+		class ConnectedComponent extends React.Component {
+			constructor(props) {
+				super(props);
+
+				this.state = {};
+			}
+
+			componentDidMount() {
+				this.props.store.subscribe(store => {
+					this.setState({store});
+				});
+			}
+
+			render() {
+				const stateToProps =
+					typeof mapStateToProps === 'function' ? mapStateToProps(this.props.store.getState()) : {};
+				const dispatchToProps =
+					typeof mapDispatchToProps === 'function' ? mapDispatchToProps(this.props.store.dispatch) : {};
+
+				return <Component {...this.props} {...stateToProps} {...dispatchToProps} />;
+			}
+		}
+
+		return props => <Consumer>{store => <ConnectedComponent {...props} store={store} />}</Consumer>;
+	};
+}
+
+export default connect;
+```
+
+Connect - функция, которая принимает два параметра и возвращает другую функцию, которая принимает наш компонент, и затем возвращает новый компонент, куда прокидывается store через Context.Consumer, и там же мы делаем подписку на изменения в store, и вызываем те самые две функции mapStateToProps и mapDispatchToProps. Функция mapStateToProps принимает в качестве параметра состояние нашего хранилища, а возвращает объект, в котором мы получаем только то, что мы хотим. Почему именно объект? Чтобы делать деструктуризацию объекта в props нашего компонента. То же самое можно сказать про mapDispatchToProps, только здесь в качестве первого параметра прокидываем функцию dispatch. И не забываем делать проверки на то, что mapStateToProps и mapDispatchToProps - функции, чтобы мы могли их вызвать. По хорошему надо еще проверять, что возвращаемое значение это чистый объект, но не будем.
+
+Да, нужно также отметить, что при любом изменении в store наш компонент, даже если не обращался к какому-то свойству, но уже был связан, будет обновляться. Для того, чтобы такое предовратить, нужны определенные проверки.
+
+Смотрим на рабочий пример:
+
+```js
+import connect from './libs/react-redux/connect';
+
+function App({count, increase}) {
+	return (
+		<>
+			<p onClick={increase}>Count: {count}</p>
+		</>
+	);
+}
+
+function mapStateToProps(state) {
+	return {
+		count: state.counter.count
+	};
+}
+
+function mapStateToDispatch(dispatch) {
+	return {
+		increase: () => dispatch({type: 'increase'})
+	};
+}
+
+export default connect(mapStateToProps, mapStateToDispatch)(App);
+```

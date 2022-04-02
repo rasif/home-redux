@@ -1,9 +1,23 @@
-function App() {
+import connect from './libs/react-redux/connect';
+
+function App({count, increase}) {
 	return (
 		<>
-			<p>Hello, world</p>
+			<p onClick={increase}>Count: {count}</p>
 		</>
 	);
 }
 
-export default App;
+function mapStateToProps(state) {
+	return {
+		count: state.counter.count
+	};
+}
+
+function mapStateToDispatch(dispatch) {
+	return {
+		increase: () => dispatch({type: 'increase'})
+	};
+}
+
+export default connect(mapStateToProps, mapStateToDispatch)(App);
