@@ -1076,3 +1076,61 @@ function useDeepEqualSelector(selector) {
 	return useSelector(selector, deepEqual);
 }
 ```
+
+## Переходим в ветку simple-reselect
+
+Наверняка, если вы использовали redux, вы также слышали о такой библиотеке как reselect. А нужна она для того, чтобы можно было бы мемоизировать некоторое значение на основе других значений. Если у нас есть A и B, а мы должны получить на основе них C, то С изменится только в том случае, если изменится хотя бы одно из значений A и B. А зачем нам тогда вычислять C, если A и B остались неизменными? И вот тут приходит к нам на помощь такая функция createSelector. Давайте попробуем создать примитивную версию этой функции. Под капотом у них, конечно же, все иначе, используется мемоизация, но у меня нет цели переписать все так, как есть. Цель - понять.
+
+Посмотрим на пример использования:
+
+```js
+function selectA = state => state.A;
+function selectB = state => state.B;
+function selectC = createSelector(selectA, selectB, (a, b) => a + b);
+```
+
+Наша функция будет принимать максимальное количество функции (input functions), а последняя функция (output function) будет собирать все значения в качестве аргумента и выдавать уже конечный резульат.
+
+```js
+function createSelector(...funcs) {
+	if (funcs.length < 2) {
+		throw new Error('There has to be at least one input and one output functions');
+	}
+
+	const memoizedValues = {};
+	let lastResult;
+
+	const resultFunc = funcs.pop();
+
+	if (typeof resultFunc !== 'function') {
+		throw new Error('CreateSelector expects an output function after the inputs');
+	}
+
+	return state => {
+		let isChanged = false;
+
+		for (let selector of funcs) {
+			const value = selector(state);
+
+			if (memoizedValues[selector.name] !== value) {
+				memoizedValues[selector.name] = value;
+				isChanged = true;
+			}
+		}
+
+		if (isChanged) {
+			lastResult = resultFunc(...Object.values(memoizedValues));
+		}
+
+		return lastResult;
+	};
+}
+```
+
+Что мы сделали?
+
+-   проверяем, чтобы функций было хотя бы 2
+-   затем забираем последнюю функцию, она у нас будет результативной
+-   и возвращаем функцию селектор, которая проходится по всем input функциям и проверяет, изменилось ли значение
+-   если изменилось, то вызывает последнюю функцию (output function) и прокидывает туда все значения, которые были получены из input functions
+-   если же не изменилось, то возвращает предыдущее значение
