@@ -1,23 +1,13 @@
-import connect from './libs/react-redux/connect';
+import FirstComponent from './components/FirstComponent';
+import SecondComponent from './components/SecondComponent';
 
-function App({count, increase}) {
+function App() {
 	return (
 		<>
-			<p onClick={increase}>Count: {count}</p>
+			<FirstComponent />
+			<SecondComponent />
 		</>
 	);
 }
 
-function mapStateToProps(state) {
-	return {
-		count: state.counter.count
-	};
-}
-
-function mapStateToDispatch(dispatch) {
-	return {
-		increase: () => dispatch({type: 'increase'})
-	};
-}
-
-export default connect(mapStateToProps, mapStateToDispatch)(App);
+export default App;

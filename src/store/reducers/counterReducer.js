@@ -1,12 +1,18 @@
 const initialState = {
-	count: 5
+	countFirst: 5,
+	countSecond: 10
 };
 
 function counterReducer(state = initialState, action) {
-	if (action.type === 'increase') {
+	if (action.type === 'increaseFirst') {
 		return {
 			...state,
-			count: state.count + 1
+			countFirst: state.countFirst + 1
+		};
+	} else if (action.type === 'increaseSecond') {
+		return {
+			...state,
+			countSecond: state.countSecond + 1
 		};
 	}
 

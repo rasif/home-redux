@@ -959,3 +959,120 @@ function shallowEqual(a, b) {
 -   Если значения не объекты - вернет false, так как если они примитивные, то проверку такую мы уже сделали.
 -   Затем берем ключи, длины ключей, сравниваем длины. Если длины отличаются, следовательно, они не могут быть равны.
 -   В самом конце делаем проверку на то, что хотя бы одно значение не равно.
+
+## Переходим в ветку redux-master
+
+Если мы обратим внимание, то у нас в useSelector текущий state обновляется при каждом изменении store, при любом обращении к reducer, то есть при любом использовании метода dispatch нашего store. Чтобы предовратить это, мы должны будем проверить предыдущее значение с новым пришедшим.
+
+```js
+function useSelector(selector) {
+	if (typeof selector !== 'function') {
+		throw new Error('Selector can not be empty');
+	}
+
+	const store = useStore();
+
+	const [value, setValue] = useState(() => selector(store.getState()));
+
+	const previousValue = useRef(value);
+
+	useEffect(() => {
+		const unsubscribe = store.subscribe(newState => {
+			const newValue = selector(newState);
+
+			if (previousValue.current !== newValue) {
+				setValue(newValue);
+			}
+
+			previousValue.current = newValue;
+		});
+
+		return () => {
+			unsubscribe();
+		};
+	}, []);
+
+	return value;
+}
+```
+
+Но также мы не должны забывать про второй параметр useSelector. Это функция сравнения (equalityFn). По умолчанию, как мы можем заметить в нашем коде, useSelector делает строгое и ссылочное сравнение. К примеру, если есть объект, а мы получаем новый объект, то state точно обновится. А примитивные значения сравниваются по значению. Давайте реализуем возможность передачи второго параметра. Вот как теперь выглядит useEffect в useSelector:
+
+```js
+useEffect(() => {
+	const unsubscribe = store.subscribe(newState => {
+		const newValue = selector(newState);
+
+		if (typeof equalityFunction === 'function') {
+			if (equalityFunction(newValue, previousValue.current)) {
+				setValue(newValue);
+			}
+		} else if (previousValue.current !== newValue) {
+			setValue(newValue);
+		}
+
+		previousValue.current = newValue;
+	});
+
+	return () => {
+		unsubscribe();
+	};
+}, []);
+```
+
+Поверхностное сравнение у нас реализовано. Создадим хук, который будет его использовать.
+
+```js
+function useShallowEqualSelector(selector) {
+	return useSelector(selector, shallowEqual);
+}
+```
+
+Вместо useSelector, если мы хотим, чтобы наш объект сравнивался не по ссылке, а поверхностно, можем использовать данный хук.
+
+Теперь то же самое, но с глубоким сравнением (deep equal). Для начала создадим самое сравнение.
+
+```js
+function deepEqual(a, b) {
+	if (a === b) {
+		return true;
+	}
+
+	if ([a, b].some(Number.isNaN)) {
+		return false;
+	}
+
+	if (![a, b].every(isObject)) {
+		return false;
+	}
+
+	const keysA = Object.keys(a);
+	const keysB = Object.keys(b);
+
+	if (keysA.length !== keysB.length) {
+		return false;
+	}
+
+	for (let currentKey of keysA) {
+		if (isObject(a[currentKey])) {
+			if (!deepEqual(a[currentKey], b[currentKey])) {
+				return false;
+			}
+		} else if (a[currentKey] !== b[currentKey]) {
+			return false;
+		}
+	}
+
+	return true;
+}
+```
+
+Почти все так же что и в shallowEqual, но с одним отличием: если перед нами объект, то мы для него также вызываем функцию deepEqual.
+
+А вот и наш хук useDeepEqualSelector:
+
+```js
+function useDeepEqualSelector(selector) {
+	return useSelector(selector, deepEqual);
+}
+```
